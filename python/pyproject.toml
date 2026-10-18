@@ -1,0 +1,50 @@
+[project]
+name = "error-handling"
+version = "1.0.0"
+description = "Error handling patterns in Python: validate at the edge, typed errors, one central handler, Result for expected outcomes"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Rick Waterman" }]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.146.0",
+    "pydantic[email]>=2.14.1",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=2.4.0",
+    "poethepoet>=0.49.0",
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.18,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "SIM", "RUF", "T20"]
+
+[tool.mypy]
+strict = true
+files = ["src"]
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["src"]
+
+[tool.poe.tasks]
+serve = "uvicorn error_handling.main:app --reload"
+format = "ruff format"
+format-check = "ruff format --check"
+lint = "ruff check"
+lint-fix = "ruff check --fix"
+typecheck = "mypy"
+test = "pytest"
+verify = ["format-check", "lint", "typecheck", "test"]
