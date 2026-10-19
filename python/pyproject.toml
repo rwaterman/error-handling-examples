@@ -14,10 +14,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
+    "httpx2>=2.14.0",
     "mypy>=2.4.0",
     "poethepoet>=0.49.0",
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "ruff>=0.17.1",
 ]
 
@@ -38,6 +39,8 @@ plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.poe.tasks]
 serve = "uvicorn error_handling.main:app --reload"
