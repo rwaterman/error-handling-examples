@@ -39,11 +39,20 @@ def test_invalid_order_never_reaches_the_store(client: TestClient, store: InMemo
     assert store.records == {}
 
 
+def test_unknown_field_is_rejected(client: TestClient) -> None:
+    response = client.post("/orders", json={**VALID_ORDER, "discountCode": "FREE"})
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "VALIDATION_FAILED"
+
+
 def test_malformed_json_is_a_validation_failure(client: TestClient) -> None:
     response = client.post("/orders", content=b"{not json", headers={"content-type": "application/json"})
 
     assert response.status_code == 400
-    assert response.json()["code"] == "VALIDATION_FAILED"
+    body = response.json()
+    assert body["code"] == "VALIDATION_FAILED"
+    assert fields_of(body) == ["body"]
 
 
 def test_malformed_order_id_is_rejected_before_lookup(client: TestClient) -> None:

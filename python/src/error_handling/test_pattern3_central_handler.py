@@ -46,7 +46,19 @@ def test_request_id_is_generated_when_the_caller_sends_none() -> None:
 
     response = client.get(f"/orders/{uuid4()}")
 
-    assert response.json()["requestId"]
+    request_id = response.json()["requestId"]
+    assert request_id
+    assert response.headers["x-request-id"] == request_id
+
+
+def test_untrusted_request_id_is_replaced() -> None:
+    client = make_client(FailingOrderStore(RuntimeError("boom")))
+
+    response = client.get(f"/orders/{uuid4()}", headers={"x-request-id": "has space"})
+
+    request_id = response.json()["requestId"]
+    assert request_id != "has space"
+    assert response.headers["x-request-id"] == request_id
 
 
 def test_unknown_route_uses_the_same_problem_format() -> None:

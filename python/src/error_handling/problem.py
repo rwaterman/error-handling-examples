@@ -1,4 +1,5 @@
 import logging
+import re
 from collections.abc import Awaitable, Callable, Mapping
 from http import HTTPStatus
 from typing import Any
@@ -13,6 +14,7 @@ from error_handling.errors import AppError
 
 PROBLEM_JSON = "application/problem+json"
 REQUEST_ID_HEADER = "x-request-id"
+REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9_=-]{1,255}")
 UNEXPECTED_ERROR_DETAIL = "An unexpected error occurred."
 
 logger = logging.getLogger(__name__)
@@ -42,11 +44,18 @@ def problem(
         "requestId": request_id_of(request),
         **extensions,
     }
-    return JSONResponse(body, status_code=status, headers=headers, media_type=PROBLEM_JSON)
+    response_headers = {**(headers or {}), REQUEST_ID_HEADER: request_id_of(request)}
+    return JSONResponse(body, status_code=status, headers=response_headers, media_type=PROBLEM_JSON)
+
+
+def trusted_request_id(candidate: str | None) -> str:
+    if candidate is not None and REQUEST_ID_PATTERN.fullmatch(candidate):
+        return candidate
+    return str(uuid4())
 
 
 async def assign_request_id(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-    request.state.request_id = request.headers.get(REQUEST_ID_HEADER) or str(uuid4())
+    request.state.request_id = trusted_request_id(request.headers.get(REQUEST_ID_HEADER))
     response = await call_next(request)
     response.headers[REQUEST_ID_HEADER] = request_id_of(request)
     return response
@@ -60,13 +69,16 @@ def log_failure(request: Request, message: str, exc: Exception, code: str) -> No
     )
 
 
-def field_of(location: tuple[str | int, ...]) -> str:
+def field_of(error: Mapping[str, Any]) -> str:
+    location: tuple[str | int, ...] = tuple(error["loc"])
+    if error["type"] == "json_invalid":
+        return "body"
     return ".".join(str(part) for part in location[1:]) or str(location[0])
 
 
 async def handle_validation_error(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, RequestValidationError)
-    errors = [{"field": field_of(tuple(error["loc"])), "message": error["msg"]} for error in exc.errors()]
+    errors = [{"field": field_of(error), "message": error["msg"]} for error in exc.errors()]
     return problem(request, 400, "VALIDATION_FAILED", "The request is invalid.", errors=errors)
 
 
