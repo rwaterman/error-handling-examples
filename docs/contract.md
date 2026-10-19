@@ -142,7 +142,7 @@ Each implementation mirrors these test files with the same scenario names, adapt
 | -------------------------------------------------------- | ------------------------------------------------------------------------ |
 | dependency unavailable carries its status and code       | The dependency error is an application error with status `503`, code `DEPENDENCY_UNAVAILABLE`, and dependency `order-store`. |
 | repository translates driver errors and keeps the cause  | For both a connection-refused and a timeout driver error, the repository returns or raises the dependency error, and the original driver error is reachable as its cause by identity. |
-| repository lets unexpected errors through untouched      | A non-driver error from the store reaches the caller as the same error object, not wrapped as a dependency error. |
+| repository lets unexpected errors through untouched      | A non-driver error from the store reaches the caller as the same error object. It is never classified as a dependency error. |
 
 ### Pattern 3: central handler (`pattern3_central_handler`)
 
@@ -183,4 +183,5 @@ An implementation that writes its own log formatter, as the Python one does, tes
 ## Out of scope
 
 - `405 Method Not Allowed`. Some routers return it as plain text and cannot change that without workarounds that would obscure the example.
+- Request body size limits. The Go implementation caps `POST /orders` bodies at 1 MiB and reports a larger body as a `VALIDATION_FAILED` on `body`. The others rely on their framework defaults.
 - Authentication, persistence beyond the in-memory store, pagination, and idempotency keys.

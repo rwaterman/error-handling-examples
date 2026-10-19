@@ -1,6 +1,6 @@
 # Error handling examples
 
-One small orders API, built four times in Python, TypeScript, Go, and Rust, to show how error handling looks when it is designed rather than sprinkled. Every implementation passes the same scenarios, so you can read the same idea side by side in four idioms.
+One small orders API, built four times in Python, TypeScript, Go, and Rust, to show error handling that is designed up front: each kind of failure has one deliberate place where it is handled. Every implementation passes the same scenarios, so you can read the same idea side by side in four idioms.
 
 The structure follows HabibWahid's article [Junior Devs Use try-catch Everywhere. Senior Devs Use These 4 Exception Handling Patterns](https://blog.stackademic.com/junior-devs-use-try-catch-everywhere-senior-devs-use-these-4-exception-handling-patterns-dcd869ed6551), which makes the case in Java and Spring. This repository carries the same four patterns into languages that range from exception-based (Python, TypeScript) to value-based (Go, Rust).
 

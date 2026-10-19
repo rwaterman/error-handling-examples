@@ -46,7 +46,7 @@ File: [`problem.py`](src/error_handling/problem.py).
 
 Files: [`result.py`](src/error_handling/result.py), [`orders/service.py`](src/error_handling/orders/service.py).
 
-`Ok[T] | Err[E]` is a two-class union. `OrderService.get` and `OrderService.process` return `Err(OrderNotFound(...))` or `Err(OrderAlreadyProcessed(...))` instead of raising. The route handles both with `match` and `assert_never`, so mypy fails the build if a new outcome is added and left unhandled. These outcomes are never logged, because nothing went wrong.
+`Ok[T] | Err[E]` is a two-class union. `OrderService.get` and `OrderService.process` return `Err(OrderNotFound(...))` or `Err(OrderAlreadyProcessed(...))` as ordinary values. The route handles both with `match` and `assert_never`, so mypy fails the build if a new outcome is added and left unhandled. These outcomes are never logged, because nothing went wrong.
 
 ## The antipattern
 
