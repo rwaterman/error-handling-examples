@@ -1,10 +1,14 @@
 package app_test
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 	"uuid"
 
 	"github.com/rwaterman/error-handling-examples/go/orders"
@@ -78,6 +82,60 @@ func TestAlreadyProcessedOrderMapsTo409(t *testing.T) {
 	}
 	if want := "Order " + orderID.String() + " was already processed."; body.Detail != want {
 		t.Errorf("detail = %q, want %q", body.Detail, want)
+	}
+}
+
+type slowReadStore struct{ orders.Store }
+
+func (s slowReadStore) Get(ctx context.Context, key string) ([]byte, bool, error) {
+	record, found, err := s.Store.Get(ctx, key)
+	time.Sleep(10 * time.Millisecond)
+	return record, found, err
+}
+
+func TestConcurrentProcessingSucceedsOnce(t *testing.T) {
+	testApp := newTestApp(slowReadStore{orders.NewMemoryStore()})
+	orderID := createOrder(t, testApp)
+	path := "/orders/" + orderID.String() + "/process"
+	const callers = 16
+	responses := make(chan *httptest.ResponseRecorder, callers)
+	start := make(chan struct{})
+	var wait sync.WaitGroup
+	for range callers {
+		wait.Go(func() {
+			<-start
+			responses <- testApp.post(path)
+		})
+	}
+	close(start)
+	wait.Wait()
+	close(responses)
+
+	var processed orders.Order
+	successes := 0
+	for response := range responses {
+		if response.Code == http.StatusOK {
+			successes++
+			processed = decodeJSON[orders.Order](t, response)
+			continue
+		}
+		assertStatus(t, response, http.StatusConflict)
+		if body := decodeProblem(t, response); body.Code != "ORDER_ALREADY_PROCESSED" {
+			t.Errorf("code = %q, want ORDER_ALREADY_PROCESSED", body.Code)
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("got %d successful process responses, want 1", successes)
+	}
+	if processed.ProcessedAt == nil {
+		t.Fatal("processedAt is null, want a timestamp")
+	}
+	stored := decodeJSON[orders.Order](t, testApp.get("/orders/"+orderID.String(), nil))
+	if stored.ProcessedAt == nil || !stored.ProcessedAt.Equal(*processed.ProcessedAt) {
+		t.Errorf("stored processedAt = %v, want %v", stored.ProcessedAt, processed.ProcessedAt)
+	}
+	if records := testApp.recordsAtOrAbove(t, slog.LevelWarn); len(records) != 0 {
+		t.Errorf("got WARN+ records for concurrent expected outcomes: %v", records)
 	}
 }
 

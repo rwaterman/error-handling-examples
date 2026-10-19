@@ -54,9 +54,12 @@ def trusted_request_id(candidate: str | None) -> str:
     return str(uuid4())
 
 
-async def assign_request_id(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+async def handle_request(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     request.state.request_id = trusted_request_id(request.headers.get(REQUEST_ID_HEADER))
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        response = await handle_unexpected_error(request, exc)
     response.headers[REQUEST_ID_HEADER] = request_id_of(request)
     return response
 
@@ -101,8 +104,7 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
 
 
 def register_error_handlers(app: FastAPI) -> None:
-    app.middleware("http")(assign_request_id)
+    app.middleware("http")(handle_request)
     app.add_exception_handler(RequestValidationError, handle_validation_error)
     app.add_exception_handler(AppError, handle_app_error)
     app.add_exception_handler(StarletteHTTPException, handle_http_exception)
-    app.add_exception_handler(Exception, handle_unexpected_error)

@@ -60,6 +60,8 @@ Go needs no `Result` type, because `(Order, error)` already is one. The expected
 
 The split between expected and exceptional happens in the route. `writeExpectedOutcome` matches the expected types with `errors.AsType`, writes the 404 or 409 without logging, and returns every other error unchanged to the central handler. Go cannot check that the match is exhaustive the way `assert_never` does in Python. An outcome the route forgets to handle is still caught: it does not implement `AppError`, so the central handler logs it and returns a 500.
 
+The service holds a mutex across the read, status check, and save in `Process`. Concurrent processing requests share that service, so exactly one succeeds and the others receive `AlreadyProcessedError`. This small in-memory example serializes all processing calls within one service instance. Multiple service instances sharing persistent storage would need a conditional update or transaction in the store.
+
 ## The antipattern
 
 [`app/antipattern_catch_everything_test.go`](app/antipattern_catch_everything_test.go) shows Go's version of catch-everything: `if err != nil { return orders.Order{}, false }`. The test shows that a missing order and a refused connection then look the same to the caller, and nothing is logged.

@@ -28,7 +28,7 @@ curl -s -X POST localhost:8000/orders \
 
 Files: [`orders/models.py`](src/error_handling/orders/models.py), [`orders/routes.py`](src/error_handling/orders/routes.py).
 
-Pydantic models declare the rules (`EmailStr`, `Field(ge=1, le=100)`, `extra="forbid"`). FastAPI parses each request body and path parameter into those models before the route function runs. The route receives a typed, already-valid `CreateOrderRequest`, so nothing downstream checks for bad input or catches errors caused by it.
+Pydantic models declare the rules (`EmailStr`, `Field(strict=True, ge=1, le=100)`, `extra="forbid"`). Quantities require an integer, and request bodies accept only the camelCase wire names. FastAPI parses each request body and path parameter into those models before the route function runs. The route receives a typed, already-valid `CreateOrderRequest`, so nothing downstream checks for bad input or catches errors caused by it.
 
 ### 2. A small error hierarchy
 
@@ -40,7 +40,7 @@ File: [`errors.py`](src/error_handling/errors.py).
 
 File: [`problem.py`](src/error_handling/problem.py).
 
-`register_error_handlers` installs one handler per error family: validation errors, `AppError`, framework HTTP errors, and a final `Exception` catch-all. Every one of them renders the same RFC 9457 problem body with the request ID. Only 5xx responses are logged, with the full traceback. Routes contain no `try` blocks at all.
+`register_error_handlers` installs handlers for validation errors, `AppError`, and framework HTTP errors. The request middleware assigns the request ID and catches any remaining exception before it reaches Starlette's server-error middleware, which would rethrow it and cause Uvicorn to log it a second time. Every error uses the same RFC 9457 problem body with the request ID. Only 5xx responses are logged, once, with the full traceback. Routes contain no `try` blocks at all.
 
 ### 4. Result values for expected outcomes
 

@@ -2,6 +2,7 @@ package orders
 
 import (
 	"context"
+	"sync"
 	"time"
 	"uuid"
 )
@@ -9,6 +10,7 @@ import (
 // Service implements the order use cases.
 type Service struct {
 	repository *Repository
+	processMu  sync.Mutex
 }
 
 // NewService returns a Service that stores orders through repository.
@@ -47,6 +49,9 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (Order, error) {
 // Process marks a pending order as processed. The expected failures are
 // NotFoundError and AlreadyProcessedError. Any other error is unexpected.
 func (s *Service) Process(ctx context.Context, id uuid.UUID) (Order, error) {
+	s.processMu.Lock()
+	defer s.processMu.Unlock()
+
 	order, err := s.Get(ctx, id)
 	if err != nil {
 		return Order{}, err

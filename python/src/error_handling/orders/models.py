@@ -15,11 +15,11 @@ class OrderItem(CamelModel):
     model_config = ConfigDict(extra="forbid")
 
     sku: Annotated[str, Field(min_length=1, max_length=64)]
-    quantity: Annotated[int, Field(ge=1, le=100)]
+    quantity: Annotated[int, Field(strict=True, ge=1, le=100)]
 
 
 class CreateOrderRequest(CamelModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", validate_by_name=False)
 
     customer_email: EmailStr
     items: Annotated[list[OrderItem], Field(min_length=1, max_length=50)]
